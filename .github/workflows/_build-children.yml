@@ -1,0 +1,103 @@
+name: _build-children (reusable)
+on:
+  workflow_call:
+    inputs:
+      mode: { type: string, required: true }    # pr | main | release
+      registry: { type: string, required: true }
+      owner: { type: string, required: true }
+      children_json: { type: string, required: true } # '["rust","go"]'
+      base_ref: { type: string, required: true }      # eg. ghcr.io/owner/distrobox-base:latest or :pr-123
+      # pr-only
+      pr_number: { type: string, required: false }
+      short_sha: { type: string, required: false }
+      # release-only
+      release_tag: { type: string, required: false }
+    secrets:
+      token:
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-children:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJson(inputs.children_json) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        if: ${{ inputs.mode != 'pr' || (inputs.mode == 'pr' && github.event.pull_request.head.repo.fork == false) }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.token }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Compute tags
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODE="${{ inputs.mode }}"
+          REG="${{ inputs.registry }}"
+          OWN="${{ inputs.owner }}"
+          IMG="${{ matrix.image }}"
+          SHA="${GITHUB_SHA}"
+          SHORT="${{ inputs.short_sha }}"
+          PR="${{ inputs.pr_number }}"
+          REL="${{ inputs.release_tag }}"
+
+          case "$MODE" in
+            pr)
+              PUSH=$([[ '${{ github.event.pull_request.head.repo.fork }}' == 'false' ]] && echo true || echo false)
+              echo "push=$PUSH" >> $GITHUB_OUTPUT
+              echo "tags<<EOF" >> $GITHUB_OUTPUT
+              echo "${REG}/${OWN}/distrobox-${IMG}:pr-${PR}" >> $GITHUB_OUTPUT
+              echo "${REG}/${OWN}/distrobox-${IMG}:pr-${PR}-sha-${SHORT}" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+              ;;
+            main)
+              echo "push=true" >> $GITHUB_OUTPUT
+              echo "tags<<EOF" >> $GITHUB_OUTPUT
+              echo "${REG}/${OWN}/distrobox-${IMG}:latest" >> $GITHUB_OUTPUT
+              echo "${REG}/${OWN}/distrobox-${IMG}:sha-${SHA}" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+              ;;
+            release)
+              TAG="${REL#v}"
+              MAJOR="$(echo "$TAG" | cut -d. -f1)"
+              MINOR="$(echo "$TAG" | cut -d. -f2)"
+              echo "push=true" >> $GITHUB_OUTPUT
+              echo "tags<<EOF" >> $GITHUB_OUTPUT
+              echo "${REG}/${OWN}/distrobox-${IMG}:v${TAG}" >> $GITHUB_OUTPUT
+              echo "${REG}/${OWN}/distrobox-${IMG}:v${MAJOR}.${MINOR}" >> $GITHUB_OUTPUT
+              echo "${REG}/${OWN}/distrobox-${IMG}:v${MAJOR}" >> $GITHUB_OUTPUT
+              echo "${REG}/${OWN}/distrobox-${IMG}:latest" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+              ;;
+            *) echo "Unknown mode: $MODE" >&2; exit 1;;
+          esac
+
+      - name: Build & Push child
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: containerfiles/Containerfile.${{ matrix.image }}
+          push: ${{ steps.tags.outputs.push == 'true' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+          build-args: |
+            BASE_IMAGE=${{ inputs.base_ref }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

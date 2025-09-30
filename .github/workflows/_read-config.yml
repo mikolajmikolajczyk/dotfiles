@@ -1,0 +1,36 @@
+name: read-config (reusable)
+on:
+  workflow_call:
+    secrets:
+      token:
+        required: true
+    outputs:
+      registry:
+        description: "Registry to which images will be pushed"
+        value: ${{ jobs.read-config.outputs.registry }}
+      base_name:
+        description: "Image base name"
+        value: ${{jobs.read-config.outputs.base_name }}
+      children_json:
+        description: "List of child images to build"
+        value: ${{ jobs.read-config.outputs.children_json }}
+jobs:
+  read-config:
+    runs-on: ubuntu-latest
+    outputs:
+      registry: ${{ steps.out.outputs.registry }}
+      base_name: ${{ steps.out.outputs.base_name }}
+      children_json: ${{ steps.out.outputs.children_json }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mikefarah/yq@v4.44.3
+      - name: Parse config
+        id: out
+        shell: bash
+        run: |
+          set -euo pipefail
+          cfg=".github/distrobox-config.yaml"
+          [[ -f "$cfg" ]] || { echo "::error file=$cfg::config file not found"; exit 1; }
+          echo "registry=$(yq -r '.registry' "$cfg")" >> "$GITHUB_OUTPUT"
+          echo "base_name=$(yq -r '.base_name' "$cfg")" >> "$GITHUB_OUTPUT"
+          echo "children_json=$(yq -o=json -I=0 '.children' "$cfg")" >> "$GITHUB_OUTPUT"

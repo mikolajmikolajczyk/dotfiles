@@ -1,0 +1,29 @@
+[filter "lfs"]
+        clean = git-lfs clean -- %f
+        smudge = git-lfs smudge -- %f
+        process = git-lfs filter-process
+        required = true
+
+[init]
+        defaultBranch = main
+
+[pull]
+        ff = only
+
+[commit]
+        gpgsign = true
+
+[tag]
+        gpgsign = true
+
+[user]
+        name = Mikołaj Mikołajczyk
+        email = mikolaj@mikolajczyk.org
+        signingkey = 011D865FCD5538841A648C4DC0FC51DE61AAC64E
+
+[gpg]
+        program = gpg
+
+# optional: avoid "unsafe repository" when bind-mounting into containers
+[safe]
+        directory = /repo

@@ -1,0 +1,36 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-symlinks
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # ShellCheck (portable, via python wheel)
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: ["--severity=warning"]
+        # Lint only shell scripts and dotfiles that are shell-ish
+        files: ^(scripts/|dotfiles/|.*\.(sh|bash|zsh)$)
+
+  # shfmt (official pre-commit mirror)
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.12.0-2
+    hooks:
+      - id: shfmt
+        args: ["-i", "2", "-ci"]
+        files: ^(scripts/|dotfiles/|.*\.(sh|bash|zsh)$)
+
+  # Hadolint (Dockerfile/Containerfile linter)
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.14.0
+    hooks:
+      - id: hadolint
+        files: (^|/)(Dockerfile|Containerfile)(\..*)?$
