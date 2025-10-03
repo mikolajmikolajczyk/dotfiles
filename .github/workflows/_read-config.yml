@@ -10,7 +10,7 @@ on:
         value: ${{ jobs.read-config.outputs.registry }}
       base_name:
         description: "Image base name"
-        value: ${{jobs.read-config.outputs.base_name }}
+        value: ${{ jobs.read-config.outputs.base_name }}
       children_json:
         description: "List of child images to build"
         value: ${{ jobs.read-config.outputs.children_json }}
