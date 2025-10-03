@@ -7,6 +7,7 @@ dotdir         := "dotfiles"
 secretsrc      := home + "/.secretfiles"
 deploy         := "./scripts/deploy.sh"
 containerfiles := "containerfiles"
+scripts        := "scripts"
 image_org      := "ghcr.io/mikolajmikolajczyk"
 base_image     := image_org + "/distrobox-base:latest"
 dailydriver_image := image_org + "/distrobox-dailydriver:latest"
@@ -53,13 +54,7 @@ list:
 
 # Assemble a specific distrobox by name
 assemble name:
-	@if [ -z "{{name}}" ]; then \
-		echo "Please provide a parameter. Possible values:"; \
-		for d in ./distroboxes/*; do \
-			[ -d "$d" ] && echo "  $(basename "$d")"; \
-		done; \
-		exit 1; \
-	fi
-	distrobox assemble create \
-		--file distroboxes/{{name}}/distrobox.ini \
-		--replace
+  {{scripts}}/assemble.sh {{name}}
+
+enter name:
+  distrobox enter {{name}}

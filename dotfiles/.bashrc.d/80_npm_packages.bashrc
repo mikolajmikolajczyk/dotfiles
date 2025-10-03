@@ -7,3 +7,8 @@ fi
 if ! command -v backport >/dev/null 2>&1; then
   npm install -g backport
 fi
+
+# Install GitHub Copilot CLI if not already installed
+if ! command -v copilot >/dev/null 2>&1; then
+  npm install -g @github/copilot
+fi
