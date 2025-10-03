@@ -73,7 +73,7 @@ jobs:
               echo "base_ref=${REG}/${OWN}/${BASE}:latest" >> $GITHUB_OUTPUT
               ;;
             release)
-              # oczekujemy vX.Y.Z w release_tag
+              # expecting vX.Y.Z in release_tag
               TAG="${REL#v}"
               MAJOR="$(echo "$TAG" | cut -d. -f1)"
               MINOR="$(echo "$TAG" | cut -d. -f2)"
