@@ -26,4 +26,7 @@
 
 # optional: avoid "unsafe repository" when bind-mounting into containers
 [safe]
-        directory = /repo
+  directory = /repo
+
+[url "ssh://git@github.com/"]
+    insteadOf = https://github.com/
