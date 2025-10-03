@@ -1,7 +1,7 @@
 # Dotfiles & Secrets Deployment
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-<!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/mikolajmikolajczyk/dotfiles/ci.yml)](https://github.com/mikolajmikolajczyk/dotfiles/actions) -->
+<!-- [![Build Status](https://img.shields.io/github/actions/workflow/status/mikolajmikolajczyk/dotfiles/main.yml)](https://github.com/mikolajmikolajczyk/dotfiles/actions) -->
 
 Welcome! This repository helps you manage and deploy your **dotfiles** and **secrets** across different environments—be it your laptop, a new work machine, or a containerized devbox. If you ever wanted a way to sync your configuration and bootstrap your favorite environments in seconds, you're in the right place.
 
