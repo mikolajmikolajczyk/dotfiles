@@ -1,7 +1,7 @@
 name: Build & Publish (main)
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
 
 permissions:
   contents: read
