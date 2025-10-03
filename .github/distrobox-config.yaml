@@ -1,0 +1,3 @@
+registry: ghcr.io
+base_name: distrobox-base
+children: ["dailydriver"]

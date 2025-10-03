@@ -1,0 +1,45 @@
+name: Build & Publish (PR)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: images-pr-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  read-config:
+    uses: ./.github/workflows/_read-config.yml
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+
+  base:
+    needs: read-config
+    uses: ./.github/workflows/_build-base.yml
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      mode: pr
+      registry: ${{ needs.read-config.outputs.registry }}
+      owner: ${{ github.repository_owner }}
+      base_name: ${{ needs.read-config.outputs.base_name }}
+      pr_number: ${{ github.event.number }}
+      short_sha: ${{ needs.read-config.outputs.short_sha }}
+
+  children:
+    needs: [read-config, base]
+    uses: ./.github/workflows/_build-children.yml
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      mode: pr
+      registry: ${{ needs.read-config.outputs.registry }}
+      owner: ${{ github.repository_owner }}
+      children_json: ${{ needs.read-config.outputs.children_json }}
+      base_ref: ${{ needs.base.outputs.base_ref }}
+      pr_number: ${{ github.event.number }}
+      short_sha: ${{ needs.read-config.outputs.short_sha }}

@@ -1,0 +1,111 @@
+# syntax=docker/dockerfile:1.7
+ARG BASE_IMAGE
+# hadolint ignore=DL3006
+FROM ${BASE_IMAGE}
+
+# ---------------- configurable versions (override via --build-arg) ----------------
+ARG KUBECTL_VERSION=1.34.1
+ARG HELM_VERSION=3.19.0
+ARG KUSTOMIZE_VERSION=5.4.2
+ARG AWSCLI_VERSION=2.31.5
+ARG AZCLI_VERSION=2.77.0
+ARG OPENTOFU_VERSION=1.10.6
+ARG SOPS_VERSION=3.11.0
+ARG AGE_VERSION=1.2.1
+ARG GH_VERSION=2.80.0
+ARG K9S_VERSION=0.50.13
+ARG NVM_VERSION=0.40.1          # nvm release tag
+ARG GVM_VERSION=0.5.3           # andrewkroh/gvm release tag
+
+# ---------------- feature toggles (set to 0 to disable) ----------------
+ARG ENABLE_AWS=1
+ARG ENABLE_AZURE=1
+ARG ENABLE_K8S=1
+ARG ENABLE_GH=1
+ARG ENABLE_CRYPTO=1
+ARG ENABLE_K9S=1
+ARG ENABLE_KREW=1
+ARG ENABLE_NVM=1
+ARG ENABLE_GVM=1
+
+# Global env for krew only; nvm/gvm are per-user via profile.d on first login
+ENV KREW_ROOT=/usr/local/krew
+ENV PATH="${PATH}:/usr/local/krew/bin"
+
+USER root
+
+# Bring install scripts
+COPY containerfiles/install-scripts/ /usr/local/install-scripts/
+
+# Everything in one layer
+RUN set -eux \
+  && find /usr/local/install-scripts -type f -name "*.sh" -exec chmod +x {} + \
+  # OpenTofu (always)
+  && /usr/local/install-scripts/install-opentofu.sh "${OPENTOFU_VERSION}" \
+  # K8s tooling (kubectl/helm/kustomize/k9s/krew)
+  && if [ "${ENABLE_K8S}" = "1" ]; then \
+  /usr/local/install-scripts/install-k8s-tooling.sh \
+  "${KUBECTL_VERSION}" "${HELM_VERSION}" "${KUSTOMIZE_VERSION}" \
+  "${K9S_VERSION}" "${ENABLE_K9S}" "${ENABLE_KREW}"; \
+  fi \
+  # AWS CLI v2
+  && if [ "${ENABLE_AWS}" = "1" ]; then \
+  arch="$(uname -m)"; case "$arch" in x86_64) a=x86_64;; aarch64) a=aarch64;; *) echo "unsupported arch: $arch" >&2; exit 1;; esac; \
+  curl -fSLo /tmp/awscliv2.zip "https://awscli.amazonaws.com/awscli-exe-linux-${a}-${AWSCLI_VERSION}.zip"; \
+  unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install --update; \
+  rm -rf /tmp/awscliv2.zip /tmp/aws; \
+  fi \
+  # Azure CLI
+  && if [ "${ENABLE_AZURE}" = "1" ]; then \
+  rpm --import https://packages.microsoft.com/keys/microsoft.asc; \
+  printf "[azure-cli]\nname=Azure CLI\nbaseurl=https://packages.microsoft.com/yumrepos/azure-cli\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc\n" > /etc/yum.repos.d/azure-cli.repo; \
+  (dnf -y install "azure-cli-${AZCLI_VERSION}" || dnf -y install azure-cli) && dnf clean all; \
+  fi \
+  # sops/age
+  && if [ "${ENABLE_CRYPTO}" = "1" ]; then \
+  /usr/local/install-scripts/install-crypto.sh "${SOPS_VERSION}" "${AGE_VERSION}"; \
+  fi \
+  # GitHub CLI
+  && if [ "${ENABLE_GH}" = "1" ]; then \
+  arch="$(uname -m)"; case "$arch" in x86_64) a=amd64;; aarch64) a=arm64;; *) echo "unsupported arch: $arch" >&2; exit 1;; esac; \
+  curl -fsSL -o /tmp/gh.tgz "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_${a}.tar.gz"; \
+  tar -C /tmp -xzf /tmp/gh.tgz && mv /tmp/gh_*/bin/gh /usr/local/bin/gh; \
+  rm -rf /tmp/gh*; \
+  fi \
+  # nvm bootstrap (per-user via profile.d)
+  && if [ "${ENABLE_NVM}" = "1" ]; then \
+  /usr/local/install-scripts/install-nvm-bootstrap.sh "${NVM_VERSION}"; \
+  fi \
+  # gvm bootstrap (per-user via profile.d)
+  && if [ "${ENABLE_GVM}" = "1" ]; then \
+  /usr/local/install-scripts/install-gvm.sh "${GVM_VERSION}"; \
+  fi \
+  # QoL: completions (safe if commands missing)
+  && (kubectl completion bash > /etc/bash_completion.d/kubectl || true) \
+  && (helm    completion bash > /etc/bash_completion.d/helm    || true)
+
+# QoL env
+ENV TF_PLUGIN_CACHE_DIR=/root/.cache/opentofu/plugins \
+  KUBECONFIG=/root/.kube/config
+
+# OCI labels with tool versions for auditing
+LABEL org.opencontainers.image.title="distrobox-dailydriver" \
+  org.opencontainers.image.description="All-in-one DevOps box for AWS/Azure/K8s/Go workflows" \
+  org.opencontainers.image.vendor="mikolajmikolajczyk" \
+  org.opencontainers.image.licenses="MIT" \
+  org.opencontainers.image.source="https://github.com/mikolajmikolajczyk/dotfiles" \
+  org.mikolajmikolajczyk.version.opentofu="${OPENTOFU_VERSION}" \
+  org.mikolajmikolajczyk.version.kubectl="${KUBECTL_VERSION}" \
+  org.mikolajmikolajczyk.version.helm="${HELM_VERSION}" \
+  org.mikolajmikolajczyk.version.kustomize="${KUSTOMIZE_VERSION}" \
+  org.mikolajmikolajczyk.version.awscli="${AWSCLI_VERSION}" \
+  org.mikolajmikolajczyk.version.azcli="${AZCLI_VERSION}" \
+  org.mikolajmikolajczyk.version.sops="${SOPS_VERSION}" \
+  org.mikolajmikolajczyk.version.age="${AGE_VERSION}" \
+  org.mikolajmikolajczyk.version.gh="${GH_VERSION}" \
+  org.mikolajmikolajczyk.version.k9s="${K9S_VERSION}" \
+  org.mikolajmikolajczyk.version.gvm="${GVM_VERSION}" \
+  org.mikolajmikolajczyk.version.nvm="${NVM_VERSION}"
+
+
+USER 1000:1000

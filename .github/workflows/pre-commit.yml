@@ -1,0 +1,31 @@
+name: pre-commit
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install hadolint
+        run: |
+          set -eux
+          ver="v2.12.0"
+          curl -sSLo hadolint "https://github.com/hadolint/hadolint/releases/download/${ver}/hadolint-Linux-x86_64"
+          sudo install -m 0755 hadolint /usr/local/bin/hadolint
+          hadolint --version
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files

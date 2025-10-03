@@ -1,0 +1,63 @@
+# syntax=docker/dockerfile:1.7
+FROM fedora:42
+
+# ---- Versions (override via --build-arg)
+ARG YQ_VERSION=4.44.3
+ARG NEOVIM_VERSION=nightly
+ARG HUGO_VERSION=0.133.1
+ARG STARSHIP_VERSION=latest   # or e.g. 1.21.1
+ARG VSCODIUM_VERSION=stable # stable or insiders
+ARG LAZYGIT_VERSION=0.55.1
+ARG TREE_SITTER_VERSION=0.25.10
+
+# ---- Feature toggles
+ARG ENABLE_HUGO=1
+ARG ENABLE_VSCODIUM=1
+
+# Run as root
+USER root
+
+# ---- Bring install scripts
+COPY containerfiles/install-scripts/ /usr/local/install-scripts/
+COPY containerfiles/setup-scripts/ /usr/local/setup-scripts/
+
+RUN set -eux \
+  && find /usr/local/install-scripts -type f -name "*.sh" -exec chmod +x {} + \
+  && find /usr/local/setup-scripts   -type f -name "*.sh" -exec chmod +x {} + \
+  && /usr/local/install-scripts/install-base-packages.sh \
+  && /usr/local/install-scripts/install-yq.sh "${YQ_VERSION}" \
+  && /usr/local/install-scripts/install-neovim.sh "${NEOVIM_VERSION}" \
+  && if [ "${ENABLE_HUGO}" = "1" ]; then \
+  /usr/local/install-scripts/install-hugo.sh "${HUGO_VERSION}"; \
+  fi \
+  && /usr/local/install-scripts/install-starship.sh "${STARSHIP_VERSION}" \
+  && /usr/local/setup-scripts/setup-starship-global.sh \
+  && if [ "${ENABLE_VSCODIUM}" = "1" ]; then \
+  /usr/local/install-scripts/install-vscodium.sh "${VSCODIUM_VERSION}"; \
+  fi \
+  && /usr/local/install-scripts/install-lazygit.sh "${LAZYGIT_VERSION}" \
+  && /usr/local/install-scripts/install-treesitter-cli.sh "${TREE_SITTER_VERSION}" \
+  && if [ "${ENABLE_VSCODIUM}" = "1" ]; then \
+  /usr/local/setup-scripts/setup-vscodium-symlinks.sh; \
+  fi \
+  && /usr/local/setup-scripts/setup-nvim-symlinks.sh \
+  && /usr/local/setup-scripts/setup-podman-symlinks.sh
+
+# ---- QoL
+ENV EDITOR=nvim
+
+# ---- Labels
+LABEL org.opencontainers.image.title="distrobox-base" \
+  org.opencontainers.image.description="Base image for project-specific Distrobox containers" \
+  org.opencontainers.image.source="https://github.com/mikolajmikolajczyk/dotfiles" \
+  org.opencontainers.image.licenses="MIT" \
+  org.mikolajmikolajczyk.version.yq="${YQ_VERSION}" \
+  org.mikolajmikolajczyk.version.neovim="${NEOVIM_VERSION}" \
+  org.mikolajmikolajczyk.version.hugo="${HUGO_VERSION}" \
+  org.mikolajmikolajczyk.version.starship="${STARSHIP_VERSION}" \
+  org.mikolajmikolajczyk.version.vscodium="${VSCODIUM_VERSION}" \
+  org.mikolajmikolajczyk.version.lazygit="${LAZYGIT_VERSION}" \
+  org.mikolajmikolajczyk.version.tree-sitter="${TREE_SITTER_VERSION}"
+
+# Drop privileges for runtime
+USER 1000:1000
