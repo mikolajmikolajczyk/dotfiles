@@ -40,10 +40,8 @@ dnf -y install \
   lua \
   lua-devel \
   compat-lua \
-  luarocks
-
-dnf -y copr enable wezfurlong/wezterm-nightly
-dnf -y install wezterm
+  luarocks \
+  kitty
 
 dnf clean all
 rm -rf /var/cache/dnf
