@@ -6,7 +6,7 @@ return {
 
       vim.g.mkdp_browserfunc = "OpenWithGio"
 
-      -- Zdefiniuj funkcję Vimscript, która użyje 'gio open'
+      -- Define a Vimscript function that will use 'gio open'
       vim.cmd([[
         function! OpenWithGio(url)
           call jobstart(['gio', 'open', a:url], {'detach': v:true})
