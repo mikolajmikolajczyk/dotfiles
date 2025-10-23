@@ -93,14 +93,14 @@ EOF
     "telemetry.enableTelemetry": false,
     "update.showReleaseNotes": false,
     "update.mode": "none"
-  }' "$settings" 2>/dev/null >"$tmp" || cat >>"$settings" <<'EOF'
-
-  ,
+  }' "$settings" 2>/dev/null >"$tmp" || cat >"$settings" <<'EOF'
+{
   "telemetry.telemetryLevel": "off",
   "telemetry.enableCrashReporter": false,
   "telemetry.enableTelemetry": false,
   "update.showReleaseNotes": false,
   "update.mode": "none"
+}
 EOF
   mv "$tmp" "$settings"
 }
